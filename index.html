@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Simple Paint App</title>
+<title>Paint App with Color OK Button</title>
 <style>
   body {
     margin: 0;
@@ -23,11 +23,10 @@
   label {
     font-weight: bold;
   }
-  input[type="color"],
   input[type="range"] {
     cursor: pointer;
   }
-  button {
+  button, #applyColorBtn {
     padding: 6px 12px;
     font-size: 14px;
     cursor: pointer;
@@ -36,7 +35,7 @@
     background: white;
     transition: background-color 0.3s, color 0.3s;
   }
-  button:hover {
+  button:hover, #applyColorBtn:hover {
     background-color: #ddd;
   }
   button.tool-btn.active {
@@ -49,6 +48,12 @@
     cursor: crosshair;
     background: white;
     touch-action: none; /* Prevent scrolling on touch devices while drawing */
+    margin-top: 10px;
+  }
+  #colorPickerContainer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
 </style>
 </head>
@@ -56,7 +61,10 @@
 
 <div id="toolbar">
   <label for="colorPicker">Color:</label>
-  <input type="color" id="colorPicker" value="#000000" />
+  <div id="colorPickerContainer">
+    <input type="color" id="colorPicker" value="#000000" />
+    <button id="applyColorBtn">OK</button>
+  </div>
 
   <label for="brushSize">Brush size:</label>
   <input type="range" id="brushSize" min="1" max="30" value="5" />
@@ -74,6 +82,7 @@
   const ctx = canvas.getContext('2d');
 
   const colorPicker = document.getElementById('colorPicker');
+  const applyColorBtn = document.getElementById('applyColorBtn');
   const brushSize = document.getElementById('brushSize');
 
   const drawBtn = document.getElementById('drawBtn');
@@ -85,6 +94,10 @@
 
   let painting = false;
   let erasing = false;
+  let currentColor = colorPicker.value; // Color actually used for drawing (updated on OK click)
+
+  // Set initial drawing color
+  ctx.strokeStyle = currentColor;
 
   // Track whether currently drawing or erasing
   function setTool(tool) {
@@ -94,6 +107,7 @@
       ctx.globalCompositeOperation = 'destination-out';
     } else {
       ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = currentColor;
     }
   }
 
@@ -137,9 +151,9 @@
     ctx.lineCap = 'round';
 
     if (erasing) {
-      ctx.strokeStyle = 'rgba(0,0,0,1)'; // strokeStyle ignored in eraser mode but set anyway
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
     } else {
-      ctx.strokeStyle = colorPicker.value;
+      ctx.strokeStyle = currentColor;
     }
 
     ctx.lineTo(pos.x, pos.y);
@@ -206,7 +220,15 @@
     activateButton(drawBtn);
   });
 
-  // Initialize tool
+  // When OK button is pressed, update the currentColor for drawing
+  applyColorBtn.addEventListener('click', () => {
+    currentColor = colorPicker.value;
+    if (!erasing) {
+      ctx.strokeStyle = currentColor;
+    }
+  });
+
+  // Initialize tool and active button
   setTool('draw');
   activateButton(drawBtn);
 </script>
