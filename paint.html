@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simple Paint App</title>
+<style>
+  body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    background: #f0f0f0;
+  }
+  #toolbar {
+    margin: 10px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  label {
+    font-weight: bold;
+  }
+  input[type="color"],
+  input[type="range"] {
+    cursor: pointer;
+  }
+  button {
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid #999;
+    border-radius: 4px;
+    background: white;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  button:hover {
+    background-color: #ddd;
+  }
+  button.tool-btn.active {
+    background-color: #666;
+    color: white;
+    border-color: #444;
+  }
+  canvas {
+    border: 1px solid black;
+    cursor: crosshair;
+    background: white;
+    touch-action: none; /* Prevent scrolling on touch devices while drawing */
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <label for="colorPicker">Color:</label>
+  <input type="color" id="colorPicker" value="#000000" />
+
+  <label for="brushSize">Brush size:</label>
+  <input type="range" id="brushSize" min="1" max="30" value="5" />
+
+  <button id="drawBtn" class="tool-btn active">Draw</button>
+  <button id="eraserBtn" class="tool-btn">Eraser</button>
+  <button id="clearBtn" class="tool-btn">Clear</button>
+  <button id="saveBtn" class="tool-btn">Save Image</button>
+</div>
+
+<canvas id="paintCanvas" width="800" height="600"></canvas>
+
+<script>
+  const canvas = document.getElementById('paintCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const colorPicker = document.getElementById('colorPicker');
+  const brushSize = document.getElementById('brushSize');
+
+  const drawBtn = document.getElementById('drawBtn');
+  const eraserBtn = document.getElementById('eraserBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const saveBtn = document.getElementById('saveBtn');
+
+  const buttons = document.querySelectorAll('.tool-btn');
+
+  let painting = false;
+  let erasing = false;
+
+  // Track whether currently drawing or erasing
+  function setTool(tool) {
+    erasing = (tool === 'eraser');
+    if (erasing) {
+      canvas.style.cursor = 'crosshair';
+      ctx.globalCompositeOperation = 'destination-out';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  // Update buttons active state
+  function activateButton(button) {
+    buttons.forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+  }
+
+  // Mouse / Touch positions relative to canvas
+  function getPointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top,
+      };
+    } else {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    }
+  }
+
+  function startPainting(e) {
+    painting = true;
+    draw(e); // Draw immediately on start
+  }
+
+  function stopPainting() {
+    painting = false;
+    ctx.beginPath();
+  }
+
+  function draw(e) {
+    if (!painting) return;
+    const pos = getPointerPos(e);
+
+    ctx.lineWidth = brushSize.value;
+    ctx.lineCap = 'round';
+
+    if (erasing) {
+      ctx.strokeStyle = 'rgba(0,0,0,1)'; // strokeStyle ignored in eraser mode but set anyway
+    } else {
+      ctx.strokeStyle = colorPicker.value;
+    }
+
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  // Event listeners for mouse
+  canvas.addEventListener('mousedown', (e) => startPainting(e));
+  canvas.addEventListener('mouseup', stopPainting);
+  canvas.addEventListener('mouseout', stopPainting);
+  canvas.addEventListener('mousemove', draw);
+
+  // Event listeners for touch
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    startPainting(e);
+  }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    stopPainting();
+  }, { passive: false });
+  canvas.addEventListener('touchcancel', (e) => {
+    e.preventDefault();
+    stopPainting();
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    draw(e);
+  }, { passive: false });
+
+  // Tool button logic
+  drawBtn.addEventListener('click', () => {
+    setTool('draw');
+    activateButton(drawBtn);
+  });
+
+  eraserBtn.addEventListener('click', () => {
+    setTool('eraser');
+    activateButton(eraserBtn);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    activateButton(clearBtn);
+    // Optionally revert to draw mode after clear
+    setTool('draw');
+    activateButton(drawBtn);
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const dataURL = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = 'paint_image.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    activateButton(saveBtn);
+    // Revert to previous active tool (draw)
+    setTool('draw');
+    activateButton(drawBtn);
+  });
+
+  // Initialize tool
+  setTool('draw');
+  activateButton(drawBtn);
+</script>
+
+</body>
+</html>
