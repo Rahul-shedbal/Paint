@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Paint App with Color OK Button</title>
+<title>Paint App with Resizable Canvas</title>
 <style>
   body {
     margin: 0;
@@ -23,10 +23,13 @@
   label {
     font-weight: bold;
   }
-  input[type="range"] {
+  input[type="range"],
+  input[type="number"],
+  input[type="color"] {
     cursor: pointer;
+    width: 70px;
   }
-  button, #applyColorBtn {
+  button, #applyColorBtn, #setSizeBtn {
     padding: 6px 12px;
     font-size: 14px;
     cursor: pointer;
@@ -35,7 +38,7 @@
     background: white;
     transition: background-color 0.3s, color 0.3s;
   }
-  button:hover, #applyColorBtn:hover {
+  button:hover, #applyColorBtn:hover, #setSizeBtn:hover {
     background-color: #ddd;
   }
   button.tool-btn.active {
@@ -55,6 +58,14 @@
     align-items: center;
     gap: 5px;
   }
+  #sizeContainer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  input[type="number"] {
+    padding: 4px;
+  }
 </style>
 </head>
 <body>
@@ -68,6 +79,14 @@
 
   <label for="brushSize">Brush size:</label>
   <input type="range" id="brushSize" min="1" max="30" value="5" />
+
+  <label for="canvasWidth">Width:</label>
+  <input type="number" id="canvasWidth" min="100" max="2000" value="800" />
+
+  <label for="canvasHeight">Height:</label>
+  <input type="number" id="canvasHeight" min="100" max="2000" value="600" />
+
+  <button id="setSizeBtn">Set Size</button>
 
   <button id="drawBtn" class="tool-btn active">Draw</button>
   <button id="eraserBtn" class="tool-btn">Eraser</button>
@@ -85,6 +104,10 @@
   const applyColorBtn = document.getElementById('applyColorBtn');
   const brushSize = document.getElementById('brushSize');
 
+  const canvasWidthInput = document.getElementById('canvasWidth');
+  const canvasHeightInput = document.getElementById('canvasHeight');
+  const setSizeBtn = document.getElementById('setSizeBtn');
+
   const drawBtn = document.getElementById('drawBtn');
   const eraserBtn = document.getElementById('eraserBtn');
   const clearBtn = document.getElementById('clearBtn');
@@ -99,7 +122,6 @@
   // Set initial drawing color
   ctx.strokeStyle = currentColor;
 
-  // Track whether currently drawing or erasing
   function setTool(tool) {
     erasing = (tool === 'eraser');
     if (erasing) {
@@ -111,13 +133,11 @@
     }
   }
 
-  // Update buttons active state
   function activateButton(button) {
     buttons.forEach(btn => btn.classList.remove('active'));
     button.classList.add('active');
   }
 
-  // Mouse / Touch positions relative to canvas
   function getPointerPos(e) {
     const rect = canvas.getBoundingClientRect();
     if (e.touches) {
@@ -135,7 +155,7 @@
 
   function startPainting(e) {
     painting = true;
-    draw(e); // Draw immediately on start
+    draw(e);
   }
 
   function stopPainting() {
@@ -163,7 +183,7 @@
   }
 
   // Event listeners for mouse
-  canvas.addEventListener('mousedown', (e) => startPainting(e));
+  canvas.addEventListener('mousedown', startPainting);
   canvas.addEventListener('mouseup', stopPainting);
   canvas.addEventListener('mouseout', stopPainting);
   canvas.addEventListener('mousemove', draw);
@@ -186,7 +206,6 @@
     draw(e);
   }, { passive: false });
 
-  // Tool button logic
   drawBtn.addEventListener('click', () => {
     setTool('draw');
     activateButton(drawBtn);
@@ -200,7 +219,6 @@
   clearBtn.addEventListener('click', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     activateButton(clearBtn);
-    // Optionally revert to draw mode after clear
     setTool('draw');
     activateButton(drawBtn);
   });
@@ -215,17 +233,46 @@
     document.body.removeChild(link);
 
     activateButton(saveBtn);
-    // Revert to previous active tool (draw)
     setTool('draw');
     activateButton(drawBtn);
   });
 
-  // When OK button is pressed, update the currentColor for drawing
   applyColorBtn.addEventListener('click', () => {
     currentColor = colorPicker.value;
     if (!erasing) {
       ctx.strokeStyle = currentColor;
     }
+  });
+
+  // Set new canvas size when Set Size button clicked
+  setSizeBtn.addEventListener('click', () => {
+    let newWidth = parseInt(canvasWidthInput.value);
+    let newHeight = parseInt(canvasHeightInput.value);
+
+    if (isNaN(newWidth) || newWidth < 100) newWidth = 800;
+    if (isNaN(newHeight) || newHeight < 100) newHeight = 600;
+
+    // Resize canvas element; this clears content
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+
+    // Update cursor style after resizing
+    canvas.style.cursor = 'crosshair';
+
+    // Clear active button highlight from Clear or Save (if applicable),
+    // and reactivate the current tool button
+    // (This is optional, just to avoid confusion)
+    if (![drawBtn, eraserBtn].some(btn => btn.classList.contains('active'))) {
+      setTool('draw');
+      activateButton(drawBtn);
+    }
+
+    // Optional: clear canvas explicitly after resize (usually automatic)
+    ctx.clearRect(0, 0, newWidth, newHeight);
+
+    // Reset stroke style and compositing mode after resize
+    ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = currentColor;
   });
 
   // Initialize tool and active button
